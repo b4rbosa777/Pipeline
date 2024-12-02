@@ -1,0 +1,4 @@
+pytest
+google-cloud-bigquery
+flake8
+sqlfluff

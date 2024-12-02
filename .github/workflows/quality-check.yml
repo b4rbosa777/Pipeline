@@ -1,0 +1,31 @@
+name: Validate SQL and BigQuery Integration
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: SQL Linting
+        run: pytest tests/test_sql_logic.py
+
+      - name: BigQuery Integration Tests
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+        run: pytest tests/test_bigquery.py
