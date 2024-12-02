@@ -1,130 +1,28 @@
-config {
-  type: "incremental",
-  name: "cobranca_liquidacao_parc_acordo",
-  description: "Carrega os dados de liquidação de parcelas de acordo.",
-  tags: [],
-  columns: {
-    id_liqd_parc_acordo: "ID da liquidação da parcela do acordo.",
-    id_parcela_acordo: "ID da parcela do acordo.",
-    num_parcela_acordo: "Número da parcela do acordo.",
-    val_principal: "Valor principal da parcela.",
-    val_total: "Valor total da parcela.",
-    val_juros: "Valor dos juros da parcela.",
-    val_encargos: "Valor dos encargos da parcela.",
-    val_desconto: "Valor do desconto da parcela.",
-    val_distorcao: "Valor da distorção da parcela.",
-    ind_tipo_liqd: "Indicador do tipo de liquidação.",
-    id_pagto_acordo: "ID do pagamento do acordo.",
-    dat_referencia: "Data de referência da liquidação."
-  },
-  bigquery: {
-    labels: {
-      processo: "pfs_risco_tivea",
-    },
-    partitionBy: "dat_referencia",
-    requirePartitionFilter: true,
-  }
-}
-pre_operations {
-  DECLARE nom_processo STRING DEFAULT "cobranca_liquidacao_parc_acordo.sqlx";  /*DECLARE, declara uma variavel e armazena o valor "cobranca-liquidacao_parc_acordo.sqlx" dentro da variavel*/
-  DECLARE nom_tabela STRING DEFAULT "cobranca_liquidacao_parc_acordo"; /*Declara uma variavel com o valor "cobranca_liquidacao_parc_acordo*/
-  DECLARE dat_ini_movimento DATE; 
-  DECLARE dat_fim_movimento DATE;
-  DECLARE dth_ult_data_processada TIMESTAMP;
-  DECLARE dth_inicio_execucao TIMESTAMP;
-  DECLARE atual_ult_data_processada TIMESTAMP;/*tipo antigo INT64 TROQUEI para TIMESTAMP*/
-  DECLARE before_rows_count INT64;
-  DECLARE after_rows_count INT64;
-  SET @@query_label = "routine:cobranca_liquidacao_parc_acordo";
-  CALL `integracaohomologado.corp_gestao_processamento.get_processo_log`( /*Atualiza os dados das colunas abaixo*/
-    nom_processo,
-    nom_tabela,
-    dat_ini_movimento,
-    dat_fim_movimento,
-    dth_ult_data_processada,
-    dth_inicio_execucao
-  );
-  SET before_rows_count = (                  /* ESSA PARTE CONTA QUANTAS LINHAS TEM NA TABELA __TABLES__*/
-    SELECT row_count                         /* NA COLUNA table_id ONDE TEM "cobranca_liquidacao_parc_acordo*/   
-    FROM ${ref("__TABLES__")}                  /* "SET" DEFINE O VALOR DA VARIAVEL "before_rows_count*/
-    WHERE table_id = 'cobranca_liquidacao_parc_acordo' /*Essa parte de código pega a quantidade de linhas da tabela referenciada*/
-  );
-}
+-- Criação da tabela de usuários
+CREATE TABLE Usuarios (
+    UsuarioId INTEGER PRIMARY KEY AUTOINCREMENT,
+    Nome TEXT NOT NULL,
+    Email TEXT UNIQUE NOT NULL,
+    DataCriacao DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-WITH acordo_pagamentos AS (
-    SELECT
-        t1.production_date,
-        t2.*
-    FROM
-      ${ref('pfs_risco_raw_tivea', 'acordo')} AS t1 
-    INNER JOIN UNNEST(t1.pagamentos) AS t2 ON TRUE
-    WHERE t1.production_date BETWEEN dat_ini_movimento AND dat_fim_movimento
-),
-liquidacoes_acordo AS (
-    SELECT
-        t1.production_date,
-        t2.*
-    FROM
-        `acordo_pagamentos` AS t1
-    INNER JOIN UNNEST(t1.liquidacoes) AS t2 ON TRUE
-    WHERE t1.production_date BETWEEN dat_ini_movimento AND dat_fim_movimento
-),
-liquidacoes_preparadas AS (
-  SELECT
-        CAST(id AS INT64) AS id_liqd_parc_acordo,
-        CAST(parcela AS INT64) AS id_parcela_acordo,
-        CAST(numeroParcela AS INT64) AS num_parcela_acordo,
-        CAST(valorPrincipal AS INT64) AS val_principal,
-        CAST(valorTotal AS INT64) AS val_total,
-        CAST(valorJuros AS INT64) AS val_juros,
-        CAST(valorEncargos AS INT64) AS val_encargos,
-        CAST(valorDesconto AS INT64) AS val_desconto,
-        CAST(valorDistorcao AS INT64) AS val_distorcao,
-        tipo AS ind_tipo_liqd,
-        CAST(id AS INT64) AS id_pagto_acordo,
-        production_date AS dat_referencia,
-        ROW_NUMBER() OVER (PARTITION BY id, production_date ORDER BY production_date DESC) AS id_linha_atu
-    FROM
-        liquidacoes_acordo
-)
-SELECT
-    id_liqd_parc_acordo,
-    id_parcela_acordo,
-    num_parcela_acordo,
-    val_principal,
-    val_total,
-    val_juros,
-    val_encargos,
-    val_desconto,
-    val_distorcao,
-    ind_tipo_liqd,
-    id_pagto_acordo,
-    dat_referencia
-FROM
-    liquidacoes_preparadas
-WHERE id_linha_atu = 1
+-- Criação da tabela de pedidos
+CREATE TABLE Pedidos (
+    PedidoId INTEGER PRIMARY KEY AUTOINCREMENT,
+    UsuarioId INTEGER NOT NULL,
+    DataPedido DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ValorTotal REAL NOT NULL,
+    FOREIGN KEY (UsuarioId) REFERENCES Usuarios (UsuarioId)
+);
 
-post_operations {
-  SET after_rows_count = (
-    SELECT row_count
-    FROM ${ref("__TABLES__")}
-    WHERE table_id = 'cobranca_liquidacao_parc_acordo'
-  );
-  SET atual_ult_data_processada = (
-    SELECT max(CURRENT_TIMESTAMP())
-    FROM ${self()}
-    WHERE (SELECT CURRENT_TIMESTAMP()) >= dth_ult_data_processada
-    AND dat_referencia BETWEEN dat_ini_movimento AND dat_fim_movimento
-    LIMIT 1
-  );
-  CALL `integracaohomologado.corp_gestao_processamento.insert_processo_log`(
-    nom_processo,
-    nom_tabela,
-    dat_ini_movimento,
-    dat_fim_movimento,
-    atual_ult_data_processada,
-    dth_inicio_execucao,
-    (SELECT after_rows_count - before_rows_count AS count),
-    "EXECUÇÃO FINALIZADA COM SUCESSO"
-  );
-}
+
+-- Inserindo usuários
+INSERT INTO Usuarios (Nome, Email) VALUES ('João Silva', 'joao.silva@email.com');
+INSERT INTO Usuarios (Nome, Email) VALUES ('Maria Oliveira', 'maria.oliveira@email.com');
+
+-- Inserindo pedidos
+INSERT INTO Pedidos (UsuarioId, ValorTotal) VALUES (1, 150.50);
+INSERT INTO Pedidos (UsuarioId, ValorTotal) VALUES (2, 200.00);
+INSERT INTO Pedidos (UsuarioId, ValorTotal) VALUES (1, 75.00);
+
+
