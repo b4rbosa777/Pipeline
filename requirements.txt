@@ -1,4 +1,5 @@
 pytest
+pytest-sql
 google-cloud-bigquery
 flake8
 sqlfluff
