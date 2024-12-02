@@ -1,5 +1,4 @@
-pytest
-pytest-sql
+sqlfluff==1.2.1
 google-cloud-bigquery
+pytest
 flake8
-sqlfluff

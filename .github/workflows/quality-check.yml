@@ -21,8 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-
-      - name: SQL Linting
+      - name: Run SQL linting tests
         run: pytest tests/test_sql_logic.py
 
       - name: BigQuery Integration Tests
